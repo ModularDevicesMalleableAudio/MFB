@@ -1,0 +1,11 @@
+[submodule "stmlib"]
+	path = stmlib
+	url = https://github.com/pichenettes/stmlib
+[submodule "DaisySP"]
+	path = DaisySP
+	url = https://github.com/electro-smith/DaisySP
+	branch = master
+[submodule "libDaisy"]
+	path = libDaisy
+	url = https://github.com/electro-smith/libDaisy
+	branch = master
