@@ -1,13 +1,6 @@
 # Filter Bank
-
-## Author
-
-Original [Source Code](https://github.com/electro-smith/DaisyExamples/tree/master/patch/FilterBank) by Ben Sergentanis. 
-Ported to Field Hardware, additional features by Kris Graham.	
-
-## Description
-Fixed resonant peak filterbank with amplitude control per filter. Try running it with whitenoise, oscillators, or any 
-sound source you please!
+A Fixed bank of 16 Band Pass filters with amplitude control per filter, and envelope followers to allow for controlling 
+the amplitude of frequency bands using the amplitude of another signal (spectral transfer).
 
 ### To do
 
@@ -30,12 +23,11 @@ sound source you please!
 
 ## Controls
 
-| Control | Description | Comment |
-| --- | --- | --- |
-| Switch Up/Down | Control Mode | Selects which filters ctrls map to |
-| Knobs 1-4 | Filter Amplitude | Volume per filter |
-| Audio In 1 | Filter bank Input | |
-| Audio Out 1-4 | Filter Bank Output | |
+| Control        | Description                 | Comment |
+|----------------|-----------------------------| --- |
+| Switch Up/Down | Control Mode                | Selects which filters ctrls map to |
+| Knobs 1-8      | Filter Amplitude            | Volume per filter |
+| Audio In 1-2   | Filter bank Input Even/Odd  | |
+| Audio Out 1-2  | Filter Bank Output Even/Odd | |
 
-## Diagram
-<img src="https://raw.githubusercontent.com/electro-smith/DaisyExamples/master/patch/FilterBank/resources/FilterBank.png" alt="FilterBank.png" style="width: 100%;"/>
+Original [Source Code](https://github.com/electro-smith/DaisyExamples/tree/master/patch/FilterBank) by Ben Sergentanis.
