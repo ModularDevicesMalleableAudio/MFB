@@ -34,4 +34,5 @@ inputs (odd->even / even->odd / both)
 | Audio Out 1-2  | Filter Bank Output Even/Odd | Filtered Even / Odd output signal                                         |
 
 ### Credits
-Original [Source Code](https://github.com/electro-smith/DaisyExamples/tree/master/patch/FilterBank) by Ben Sergentanis.
+Original [Source Code](https://github.com/electro-smith/DaisyExamples/tree/master/patch/FilterBank) by 
+[Ben Sergentanis](https://github.com/beserge).
