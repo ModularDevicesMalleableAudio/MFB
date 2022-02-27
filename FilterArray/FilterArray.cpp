@@ -43,8 +43,8 @@ inline const char * BankToLabel(int i)
 {
     switch (i)
     {
-        case 1:  return "Even";
-        case 0:  return "Odd ";
+        case 0:  return "Even";
+        case 1:  return "Odd ";
         default: return "[Unknown]";
     }
 }
@@ -104,7 +104,6 @@ struct ConditionalUpdate
             oldVal = newVal;
             return true;
         }
-
         return false;
     }
 };
@@ -123,9 +122,9 @@ public:
     float             envelope_amp {};
     int               split_signal_band_index {};
     int               target_band_index {};
-    bool              iseven {};
-    bool isEven() const {
-        return iseven;
+    bool              is_odd {};
+    bool isOdd() const {
+        return is_odd;
     }
 
     void Init(float sample_rate,
@@ -162,9 +161,9 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
         float even_output = 0.f;
         float odd_output = 0.f;
         for(int j = 0; j < 16; j++) {
-            // Transfer odd to even
-            if (!filters[j].isEven() && filters[j].env.isActive()) {
-                // if its odd, and the envelope is active, then change the target (even) band's envelope_amp
+            // Transfer even to odd
+            if (!filters[j].isOdd() && filters[j].env.isActive()) {
+                // if its even, and the envelope is active, then change the target (odd) band's envelope_amp
                 float filtered_input = filters[j].Process(in[ODD][i]);
                 if (transfer_odd_to_even) {
                     int target_idx = filters[j].target_band_index;
@@ -175,12 +174,11 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                     filters[j].envelope_amp = float(filters[j].env.Process(filtered_input, true));
                 }
             }
-            // Transfer even to odd
-            if (filters[j].isEven() && filters[j].env.isActive()) {
-                // if its even, and the envelope is active, then change the target (odd) band's envelope_amp
+            // Transfer odd to even
+            if (filters[j].isOdd() && filters[j].env.isActive()) {
+                // if its odd, and the envelope is active, then change the target (even) band's envelope_amp
                 float filtered_input = filters[j].Process(in[EVEN][i]);
                 if (transfer_even_to_odd) {
-
                     int target_idx = filters[j].target_band_index;
                     filters[target_idx].envelope_amp = float(filters[j].env.Process(filtered_input, true));
                 }
@@ -191,10 +189,10 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             }
 
             // Then pass input signals through the filters
-            if (filters[j].isEven()) {
+            if (!filters[j].isOdd()) {
                 even_output += filters[j].Process(in[EVEN][i]);
             }
-            if (!filters[j].isEven()) {
+            if (filters[j].isOdd()) {
                 odd_output += filters[j].Process(in[ODD][i]);
             }
         }
@@ -202,8 +200,8 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
         even_output *= .06;
         odd_output *= .06;
         // send output to outs
-        out[ODD][i] = odd_output;
         out[EVEN][i] = even_output;
+        out[ODD][i] = odd_output;
     }
 }
 
@@ -242,16 +240,16 @@ void RenderBars() {
         amplitude += fmin(floor((filters[i].knob_amp * filters[i].envelope_amp) * 45), 45);
         hw.display.DrawRect(LEFT_BORDER_WIDTH + (i * (COLUMN_WIDTH + COLUMN_MARGIN)),
                             60 - amplitude,
-                            LEFT_BORDER_WIDTH + ((i+1) * (COLUMN_WIDTH)) + (i * COLUMN_MARGIN),
+                            LEFT_BORDER_WIDTH + ((i + 1) * (COLUMN_WIDTH)) + (i * COLUMN_MARGIN),
                             60,
                             true,
-                            filters[i].isEven() == bank % 2);
+                            filters[i].isOdd() != bank % 2);
 
-        hw.display.DrawLine(LEFT_BORDER_WIDTH + ((COLUMN_WIDTH + COLUMN_MARGIN) * i),
+        hw.display.DrawLine(LEFT_BORDER_WIDTH + (i * (COLUMN_WIDTH + COLUMN_MARGIN)),
                             63,
-                            LEFT_BORDER_WIDTH + (COLUMN_WIDTH * (i + 1) + (COLUMN_MARGIN * i)),
+                            LEFT_BORDER_WIDTH + + ((i + 1) * (COLUMN_WIDTH)) + (i * COLUMN_MARGIN),
                             63,
-                            filters[i].isEven() != bank % 2);
+                            filters[i].isOdd() == bank % 2);
     }
 }
 
@@ -289,13 +287,12 @@ void UpdateLeds()
     {
         int x = 0;
         // get relevant filter index for the selected bank (odd or even)
-        if (bank == EVEN) { x = (i * 2) + 1; }
-        if (bank == ODD) { x = (i * 2); }
+        if (bank == ODD) { x = (i * 2) + 1; }
+        if (bank == EVEN) { x = (i * 2); }
         hw.led_driver.SetLed(knob_leds[i], float((filters[x].knob_amp * filters[x].envelope_amp)));
         float envelopeActive = filters[x].env.isActive();
         hw.led_driver.SetLed(keyboard_leds[i + 8], envelopeActive);
     }
-
     hw.led_driver.SwapBuffersAndTransmit();
 }
 
@@ -355,11 +352,11 @@ void UpdateControls() {
     for (int i = 0; i < 16; i++) {
         int k = floor(i / 2);
         // Even bands
-        if (bank == EVEN && filters[i].isEven()) {
+        if (bank == EVEN && !filters[i].isOdd()) {
             if (condUpdates[k].Process(even_vals[k])) { filters[i].knob_amp = even_vals[k]; }
         }
         // Odd bands
-        if (bank == ODD && !filters[i].isEven()) {
+        if (bank == ODD && filters[i].isOdd()) {
             if (condUpdates[k].Process(odd_vals[k])) { filters[i].knob_amp = odd_vals[k]; }
         }
     }
@@ -369,8 +366,8 @@ void UpdateControls() {
     {
         int x = 0;
         // get relevant filter index for the selected bank (odd or even)
-        if (bank == EVEN) { x = ((i - 8) * 2) + 1; }
-        if (bank == ODD) { x = ((i - 8) * 2); }
+        if (bank == ODD) { x = ((i - 8) * 2) + 1; }
+        if (bank == EVEN) { x = ((i - 8) * 2); }
         if (hw.KeyboardRisingEdge(i)) {
             filters[x].env.setActive(!filters[x].env.isActive());
             if (!filters[x].env.isActive()) { filters[x].envelope_amp = 1.0f; }
