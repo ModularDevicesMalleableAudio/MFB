@@ -139,8 +139,8 @@ public:
         knob_amp = .5f;
         envelope_amp = 1.0f;
         split_signal_band_index = floor(global_band_index / 2);
-        iseven = global_band_index % 2;
-        target_band_index = (iseven) ? (global_band_index + iseven + 1) : (global_band_index + iseven);
+        is_odd = global_band_index % 2;
+        target_band_index = (is_odd) ? (global_band_index - 1) : (global_band_index + 1);
     }
 
     float Process(float in)
