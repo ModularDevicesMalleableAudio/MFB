@@ -232,10 +232,10 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
             // Then pass input signals through the filters and scale across 16 bands for outputting
             if (!filters[j].isOdd()) {
-                even_output += filters[j].Process(in[EVEN][i]);
+                even_output += filters[j].Process(unfilteredInput);
             }
             if (filters[j].isOdd()) {
-                odd_output += filters[j].Process(in[ODD][i]);
+                odd_output += filters[j].Process(unfilteredInput);
             }
 
             // Scaling factors for 16 filter bands
