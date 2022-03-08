@@ -208,8 +208,13 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             float pairedUnfilteredInput = (filters[pairedBandIndex].isOdd()) ? in[EVEN][i] : in[ODD][i];
             float pairedFilteredInput = filters[pairedBandIndex].PreProcess(pairedUnfilteredInput);
 
-            // Update the display envelope amp using the filtered input signal
-            filters[j].frontend_envelope_amp = float(filters[j].env.Process(filteredInput, true));
+            if (filters[j].env.isActive()) {
+                // Update the display envelope amp using the filtered input signal
+                filters[j].frontend_envelope_amp = float(filters[j].env.Process(filteredInput, true));
+            }
+            else {
+                filters[j].frontend_envelope_amp = 1.0f;
+            }
 
             // if the paired band is transferring to the current band, use the paired env amp...
             if (filters[pairedBandIndex].env.isActive()) {
@@ -384,7 +389,6 @@ void UpdateControls() {
             if (bank == ODD) { x = ((i - 8) * 2) + 1; }
             if (bank == EVEN) { x = ((i - 8) * 2); }
             filters[x].env.setActive(!filters[x].env.isActive());
-            if (!filters[x].env.isActive()) { filters[x].envelope_amp = 1.0f; }
         }
     }
 }
