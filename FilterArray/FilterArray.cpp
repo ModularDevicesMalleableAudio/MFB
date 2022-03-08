@@ -93,6 +93,35 @@ enum
     BAND7MIDIACTIVE __attribute__((unused)) = 15
 };
 
+int knob_leds[] = {
+        DaisyField::LED_KNOB_1,
+        DaisyField::LED_KNOB_2,
+        DaisyField::LED_KNOB_3,
+        DaisyField::LED_KNOB_4,
+        DaisyField::LED_KNOB_5,
+        DaisyField::LED_KNOB_6,
+        DaisyField::LED_KNOB_7,
+        DaisyField::LED_KNOB_8,
+};
+int keyboard_leds[] = {
+        DaisyField::LED_KEY_A1,
+        DaisyField::LED_KEY_A2,
+        DaisyField::LED_KEY_A3,
+        DaisyField::LED_KEY_A4,
+        DaisyField::LED_KEY_A5,
+        DaisyField::LED_KEY_A6,
+        DaisyField::LED_KEY_A7,
+        DaisyField::LED_KEY_A8,
+        DaisyField::LED_KEY_B1,
+        DaisyField::LED_KEY_B2,
+        DaisyField::LED_KEY_B3,
+        DaisyField::LED_KEY_B4,
+        DaisyField::LED_KEY_B5,
+        DaisyField::LED_KEY_B6,
+        DaisyField::LED_KEY_B7,
+        DaisyField::LED_KEY_B8,
+};
+
 struct ConditionalUpdate
 {
     float oldVal = 0;
@@ -266,43 +295,17 @@ void RenderBars() {
 
 void UpdateLeds()
 {
-    int knob_leds[] = {
-            DaisyField::LED_KNOB_1,
-            DaisyField::LED_KNOB_2,
-            DaisyField::LED_KNOB_3,
-            DaisyField::LED_KNOB_4,
-            DaisyField::LED_KNOB_5,
-            DaisyField::LED_KNOB_6,
-            DaisyField::LED_KNOB_7,
-            DaisyField::LED_KNOB_8,
-    };
-    int keyboard_leds[] = {
-            DaisyField::LED_KEY_A1,
-            DaisyField::LED_KEY_A2,
-            DaisyField::LED_KEY_A3,
-            DaisyField::LED_KEY_A4,
-            DaisyField::LED_KEY_A5,
-            DaisyField::LED_KEY_A6,
-            DaisyField::LED_KEY_A7,
-            DaisyField::LED_KEY_A8,
-            DaisyField::LED_KEY_B1,
-            DaisyField::LED_KEY_B2,
-            DaisyField::LED_KEY_B3,
-            DaisyField::LED_KEY_B4,
-            DaisyField::LED_KEY_B5,
-            DaisyField::LED_KEY_B6,
-            DaisyField::LED_KEY_B7,
-            DaisyField::LED_KEY_B8,
-    };
     for(int i = 0; i < 8; i++)
     {
         int x = 0;
         // get relevant filter index for the selected bank (odd or even)
         if (bank == ODD) { x = (i * 2) + 1; }
         if (bank == EVEN) { x = (i * 2); }
-        hw.led_driver.SetLed(knob_leds[i], float((filters[x].knob_amp * filters[x].envelope_amp)));
-        float envelopeActive = filters[x].env.isActive();
-        hw.led_driver.SetLed(keyboard_leds[i + 8], envelopeActive);
+        hw.led_driver.SetLed(
+                knob_leds[i],
+                float((filters[x].knob_amp * filters[x].frontend_envelope_amp))
+                );
+        hw.led_driver.SetLed(keyboard_leds[i + 8], float(filters[x].env.isActive()));
     }
     hw.led_driver.SwapBuffersAndTransmit();
 }
