@@ -237,15 +237,14 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             if (filters[j].isOdd()) {
                 odd_output += filters[j].Process(unfilteredInput);
             }
-
-            // Scaling factors for 16 filter bands
-            even_output *= .06;
-            odd_output *= .06;
-
-            // send output to outs
-            out[EVEN][i] = even_output;
-            out[ODD][i] = odd_output;
         }
+        // Scaling factors for 16 filter bands
+        even_output *= .06;
+        odd_output *= .06;
+
+        // send output to outs
+        out[EVEN][i] = even_output;
+        out[ODD][i] = odd_output;
     }
 }
 
