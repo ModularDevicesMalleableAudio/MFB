@@ -164,9 +164,9 @@ public:
         env.Init(sample_rate, 1, 20);
         filt.Init(sample_rate);
         filt.SetRes(0.6);
-        filt.SetDrive(.002);
+        filt.SetDrive(0.002);
         filt.SetFreq(frequency);
-        knob_amp = .5f;
+        knob_amp = 1.0f;
         envelope_amp = 1.0f;
         frontend_envelope_amp = 1.0f;
         split_signal_band_index = floor(global_band_index / 2);
