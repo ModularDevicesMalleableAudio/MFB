@@ -205,7 +205,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             // get input signals, filter them accordingly
             float unfilteredInput = (filters[j].isOdd()) ? in[ODD][i] : in[EVEN][i];
             float filteredInput = filters[j].PreProcess(unfilteredInput);
-            float pairedUnfilteredInput = (filters[pairedBandIndex].isOdd()) ? in[EVEN][i] : in[ODD][i];
+            float pairedUnfilteredInput = (filters[pairedBandIndex].isOdd()) ? in[ODD][i] : in[EVEN][i];
             float pairedFilteredInput = filters[pairedBandIndex].PreProcess(pairedUnfilteredInput);
 
             if (filters[j].env.isActive()) {
