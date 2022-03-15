@@ -195,10 +195,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                           AudioHandle::OutputBuffer out,
                           size_t                    size)
 {
-    for(size_t i = 0; i < size; i++)
-    {
-        float even_output = 0.f;
-        float odd_output = 0.f;
+    for(size_t i = 0; i < size; i++) {
         for(int j = 0; j < 16; j++) {
             int pairedBandIndex = filters[j].paired_band_index; // get paired band index
 
@@ -208,8 +205,8 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             float pairedUnfilteredInput = (filters[pairedBandIndex].isOdd()) ? in[ODD][i] : in[EVEN][i];
             float pairedFilteredInput = filters[pairedBandIndex].PreProcess(pairedUnfilteredInput);
 
+            // Update the display envelope amp using the filtered input signal where it is active
             if (filters[j].env.isActive()) {
-                // Update the display envelope amp using the filtered input signal
                 filters[j].frontend_envelope_amp = float(filters[j].env.Process(filteredInput, true));
             }
             else {
@@ -229,13 +226,18 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             else if (filters[j].env.isActive()) {
                 filters[j].envelope_amp = float(filters[j].env.Process(filteredInput, true));
             }
+        }
 
-            // Then pass input signals through the filters and scale across 16 bands for outputting
+        float even_output = 0.f;
+        float odd_output = 0.f;
+
+        // Then pass input signals through the filters and scale across 16 bands for outputting
+        for(int j = 0; j < 16; j++) {
             if (!filters[j].isOdd()) {
-                even_output += filters[j].Process(unfilteredInput);
+                even_output += filters[j].Process(in[EVEN][i]);
             }
             if (filters[j].isOdd()) {
-                odd_output += filters[j].Process(unfilteredInput);
+                odd_output += filters[j].Process(in[ODD][i]);
             }
         }
         // Scaling factors for 16 filter bands
