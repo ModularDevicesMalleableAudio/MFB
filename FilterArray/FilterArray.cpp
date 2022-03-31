@@ -195,7 +195,25 @@ public:
     {
         filt.Process(in);
         return filt.Band() * follower_amp * knob_amp;
+
+    void OnNoteOn(float input_note, float velocity) {
+        if (note == input_note ) {
+            note_ = note;
+            velocity_ = velocity;
+            active_ = true;
+            env_gate_ = true;
+        }
     }
+
+    void OnNoteOff() { env_gate_ = false; }
+
+    inline bool  IsActive() const { return active_; }
+    inline float GetNote() const { return note_; }
+
+    private:
+        float      note_, velocity_;
+        bool       active_;
+        bool       env_gate_;
 };
 
 Filter filters[16];
