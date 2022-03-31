@@ -152,6 +152,7 @@ public:
     float             knob_amp {};
     float             follower_amp {};
     float             frontend_follower_amp {};
+    float             note {};
     int               split_signal_band_index {};
     int               paired_band_index {};
     bool              is_odd {};
@@ -163,6 +164,7 @@ public:
               float frequency,
               int global_band_index)
     {
+        note = static_cast < float > (global_band_index + BASE_NOTE);
         envelope.Init(sample_rate);
         envelope.SetSustainLevel(0.5f);
         envelope.SetTime(ADSR_SEG_ATTACK, 0.005f);
