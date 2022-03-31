@@ -145,11 +145,11 @@ public:
     Filter() = default;
     ~Filter() = default;
 
-    EnvelopeFollower  env;
+    EnvelopeFollower  follower;
     Svf               filt;
     float             knob_amp {};
-    float             envelope_amp {};
-    float             frontend_envelope_amp {};
+    float             follower_amp {};
+    float             frontend_follower_amp {};
     int               split_signal_band_index {};
     int               paired_band_index {};
     bool              is_odd {};
@@ -161,14 +161,14 @@ public:
               float frequency,
               int global_band_index)
     {
-        env.Init(sample_rate, 1, 20);
+        follower.Init(sample_rate, 1, 20);
         filt.Init(sample_rate);
         filt.SetRes(0.6);
         filt.SetDrive(0.002);
         filt.SetFreq(frequency);
         knob_amp = 1.0f;
-        envelope_amp = 1.0f;
-        frontend_envelope_amp = 1.0f;
+        follower_amp = 1.0f;
+        frontend_follower_amp = 1.0f;
         split_signal_band_index = floor(global_band_index / 2);
         is_odd = global_band_index % 2;
         paired_band_index = (is_odd) ? (global_band_index - 1) : (global_band_index + 1);
@@ -185,7 +185,7 @@ public:
     float Process(float in)
     {
         filt.Process(in);
-        return filt.Band() * envelope_amp * knob_amp;
+        return filt.Band() * follower_amp * knob_amp;
     }
 };
 
@@ -206,25 +206,25 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             float pairedFilteredInput = filters[pairedBandIndex].PreProcess(pairedUnfilteredInput);
 
             // Update the display envelope amp using the filtered input signal where it is active
-            if (filters[j].env.isActive()) {
-                filters[j].frontend_envelope_amp = float(filters[j].env.Process(filteredInput, true));
+            if (filters[j].follower.isActive()) {
+                filters[j].frontend_follower_amp = float(filters[j].follower.Process(filteredInput, true));
             }
             else {
-                filters[j].frontend_envelope_amp = 1.0f;
+                filters[j].frontend_follower_amp = 1.0f;
             }
 
-            // if the paired band is transferring to the current band, use the paired env amp...
-            if (filters[pairedBandIndex].env.isActive()) {
+            // if the paired band is transferring to the current band, use the paired follower amp...
+            if (filters[pairedBandIndex].follower.isActive()) {
                 if (transfer_odd_to_even && !filters[j].isOdd()) {
-                    filters[j].envelope_amp = float(filters[pairedBandIndex].env.Process(pairedFilteredInput, true));
+                    filters[j].follower_amp = float(filters[pairedBandIndex].follower.Process(pairedFilteredInput, true));
                 }
                 else if (transfer_even_to_odd && filters[j].isOdd()) {
-                    filters[j].envelope_amp = float(filters[pairedBandIndex].env.Process(pairedFilteredInput, true));
+                    filters[j].follower_amp = float(filters[pairedBandIndex].follower.Process(pairedFilteredInput, true));
                 }
             }
-            // If its not being transferred to, but it is active, we update the current env amp
-            else if (filters[j].env.isActive()) {
-                filters[j].envelope_amp = float(filters[j].env.Process(filteredInput, true));
+            // If its not being transferred to, but it is active, we update the current follower amp
+            else if (filters[j].follower.isActive()) {
+                filters[j].follower_amp = float(filters[j].follower.Process(filteredInput, true));
             }
         }
 
@@ -283,7 +283,10 @@ void RenderBars() {
     {
         // refactor to have a thin envelope bar inside the fat knob value?
         int amplitude = 0;
-        amplitude += fmin(floor((filters[i].knob_amp * filters[i].frontend_envelope_amp) * 45), 45);
+        amplitude += fmin(
+                floor((filters[i].knob_amp * filters[i].frontend_follower_amp) * 45),
+                45
+                );
         hw.display.DrawRect(LEFT_BORDER_WIDTH + (i * (COLUMN_WIDTH + COLUMN_MARGIN)),
                             60 - amplitude,
                             LEFT_BORDER_WIDTH + ((i + 1) * (COLUMN_WIDTH)) + (i * COLUMN_MARGIN),
@@ -309,9 +312,9 @@ void UpdateLeds()
         if (bank == EVEN) { x = (i * 2); }
         hw.led_driver.SetLed(
                 knob_leds[i],
-                float((filters[x].knob_amp * filters[x].frontend_envelope_amp))
+                float((filters[x].knob_amp * filters[x].frontend_follower_amp))
                 );
-        hw.led_driver.SetLed(keyboard_leds[i + 8], float(filters[x].env.isActive()));
+        hw.led_driver.SetLed(keyboard_leds[i + 8], float(filters[x].follower.isActive()));
     }
     hw.led_driver.SwapBuffersAndTransmit();
 }
@@ -389,13 +392,13 @@ void UpdateControls() {
             // get relevant filter index for the selected bank (odd or even)
             if (bank == ODD) { x = ((i - 8) * 2) + 1; }
             if (bank == EVEN) { x = ((i - 8) * 2); }
-            filters[x].env.setActive(!filters[x].env.isActive());
+            filters[x].follower.setActive(!filters[x].follower.isActive());
         }
     }
 }
 
-//if (filters[i].env.isActive()) {
-//amplitude += fmin(floor((filters[i].knob_amp * filters[i].envelope_amp) * 45), 45);
+//if (filters[i].follower.isActive()) {
+//amplitude += fmin(floor((filters[i].knob_amp * filters[i].follower_amp) * 45), 45);
 //}
 //else {
 //amplitude += fmin((filters[i].knob_amp * 45), 45);
