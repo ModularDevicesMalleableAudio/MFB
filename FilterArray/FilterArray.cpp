@@ -191,10 +191,12 @@ public:
     }
 
     // Get filtered signal from bank, applying both envelope follower and the attenuation from the knobs
-    float Process(float in)
-    {
-        filt.Process(in);
-        return filt.Band() * follower_amp * knob_amp;
+    float Process(float in) {
+        float amp;
+        amp = envelope.Process(env_gate_);
+        filter.Process(in);
+        return filter.Band() * amp; //follower_amp * knob_amp;
+    }
 
     void OnNoteOn(float input_note, float velocity) {
         if (note == input_note ) {
