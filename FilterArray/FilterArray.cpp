@@ -426,6 +426,42 @@ void UpdateControls() {
     }
 }
 
+int GetIndexFromNote(int note) {
+    return note - BASE_NOTE;
+}
+
+// Typical Switch case for Message Type.
+void HandleMidiMessage(MidiEvent m)
+{
+    switch(m.type)
+    {
+        case NoteOn:
+        {
+            NoteOnEvent p = m.AsNoteOn();
+            Filter band = filters[GetIndexFromNote(p.note)];
+            // Note Off can come in as Note On w/ 0 Velocity
+            if(p.velocity < 1)
+            {
+                band.OnNoteOff();
+            }
+            else
+            {
+                band.envelope.SetSustainLevel(static_cast < float > (p.velocity) / 127.0f);
+                band.OnNoteOn(p.note, p.velocity);
+            }
+        }
+            break;
+        case NoteOff:
+        {
+            NoteOnEvent p = m.AsNoteOn();
+            Filter band = filters[GetIndexFromNote(p.note)];
+            band.OnNoteOff();
+        }
+            break;
+        default: break;
+    }
+}
+
 //if (filters[i].follower.isActive()) {
 //amplitude += fmin(floor((filters[i].knob_amp * filters[i].follower_amp) * 45), 45);
 //}
@@ -450,5 +486,11 @@ int main()
         UpdateLeds();
         System::Delay(1);
         UpdateControls();
+        hw.midi.Listen();
+        // Handle MIDI Events
+        while(hw.midi.HasEvents())
+        {
+            HandleMidiMessage(hw.midi.PopEvent());
+        }
     }
 }
