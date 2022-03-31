@@ -146,6 +146,7 @@ public:
     Filter() = default;
     ~Filter() = default;
 
+    Adsr              envelope;
     EnvelopeFollower  follower;
     Svf               filter;
     float             knob_amp {};
@@ -162,6 +163,11 @@ public:
               float frequency,
               int global_band_index)
     {
+        envelope.Init(sample_rate);
+        envelope.SetSustainLevel(0.5f);
+        envelope.SetTime(ADSR_SEG_ATTACK, 0.005f);
+        envelope.SetTime(ADSR_SEG_DECAY, 0.005f);
+        envelope.SetTime(ADSR_SEG_RELEASE, 0.2f);
         follower.Init(sample_rate, 1, 20);
         filter.Init(sample_rate);
         filter.SetRes(0.6);
