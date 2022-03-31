@@ -146,7 +146,7 @@ public:
     ~Filter() = default;
 
     EnvelopeFollower  follower;
-    Svf               filt;
+    Svf               filter;
     float             knob_amp {};
     float             follower_amp {};
     float             frontend_follower_amp {};
@@ -162,10 +162,10 @@ public:
               int global_band_index)
     {
         follower.Init(sample_rate, 1, 20);
-        filt.Init(sample_rate);
-        filt.SetRes(0.6);
-        filt.SetDrive(0.002);
-        filt.SetFreq(frequency);
+        filter.Init(sample_rate);
+        filter.SetRes(0.6);
+        filter.SetDrive(0.002);
+        filter.SetFreq(frequency);
         knob_amp = 1.0f;
         follower_amp = 1.0f;
         frontend_follower_amp = 1.0f;
@@ -177,8 +177,8 @@ public:
     // Get filtered signal from bank, respecting the knob amplitude attenuation but ignoring envelope follower
     float PreProcess(float in)
     {
-        filt.Process(in);
-        return filt.Band() * knob_amp;
+        filter.Process(in);
+        return filter.Band() * knob_amp;
     }
 
     // Get filtered signal from bank, applying both envelope follower and the attenuation from the knobs
