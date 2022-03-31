@@ -4,12 +4,13 @@
 #include <algorithm>
 #include <string>
 
+#define BASE_NOTE 64
 #define LEFT_BORDER_WIDTH 1
 #define COLUMN_WIDTH 6
 #define COLUMN_MARGIN 2
 #define KNOB_TOLERANCE .001f
-#define KNOB_MIN .003f
 
+#define KNOB_MIN .003f
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 60
 #define HEADER_HEIGHT 10
