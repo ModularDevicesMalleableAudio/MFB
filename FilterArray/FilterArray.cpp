@@ -3,8 +3,11 @@
 #include "FilterArray.h"
 #include <algorithm>
 #include <string>
+#include <iomanip>
 
-#define BASE_NOTE 64
+#define MIDI_CHANNEL 0 // 0-indexed midi channel
+#define BASE_NOTE 60
+#define BASE_CC 60
 #define LEFT_BORDER_WIDTH 1
 #define COLUMN_WIDTH 6
 #define COLUMN_MARGIN 2
@@ -34,6 +37,10 @@ DaisyField hw;
 
 float frequencies[16];
 int bank;
+int recent_midi_ch;
+int recent_midi_note;
+int recent_midi_velo;
+
 
 enum {
     EVEN = 0,
@@ -50,29 +57,19 @@ inline const char * BankToLabel(int i)
     }
 }
 
-bool transfer_odd_to_even  = false;
-bool transfer_even_to_odd  = false;
-int spectral_transfer_mode = 0;
-
-void spectralTransferMode()
-{
-    if (spectral_transfer_mode == 0) { transfer_even_to_odd = false, transfer_odd_to_even = false; }
-    if (spectral_transfer_mode == 1) { transfer_even_to_odd = true, transfer_odd_to_even = false; }
-    if (spectral_transfer_mode == 2) { transfer_even_to_odd = false, transfer_odd_to_even = true; }
-    if (spectral_transfer_mode == 3) { transfer_even_to_odd = true, transfer_odd_to_even = true ;}
+int GetIndexFromNote(int note) {
+    return note - BASE_NOTE;
 }
 
-inline const char * spectralTransferModeLabel(int modSettings)
-{
-    switch (modSettings)
-    {
-        case 0:  return "No Transfer";
-        case 1:  return "Even -> Odd";
-        case 2:  return "Odd -> Even";
-        case 3:  return "E->O & O->E";
-        default: return " [Unknown] ";
-    }
-}
+//inline const char * MidiModeLabel(int midiSettings)
+//{
+//    switch (midiSettings)
+//    {
+//        case 0:  return "NT";
+//        case 1:  return "CC";
+//        default: return " [Unknown] ";
+//    }
+//}
 
 enum
 {
@@ -150,12 +147,11 @@ public:
     EnvelopeFollower  follower;
     Svf               filter;
     float             knob_amp {};
-    float             follower_amp {};
-    float             frontend_follower_amp {};
+    float             amp {};
     float             note {};
     int               split_signal_band_index {};
-    int               paired_band_index {};
     bool              is_odd {};
+    bool              env_gate_ {};
     bool isOdd() const {
         return is_odd;
     }
@@ -170,29 +166,17 @@ public:
         envelope.SetTime(ADSR_SEG_ATTACK, 0.005f);
         envelope.SetTime(ADSR_SEG_DECAY, 0.005f);
         envelope.SetTime(ADSR_SEG_RELEASE, 0.2f);
-        follower.Init(sample_rate, 1, 20);
         filter.Init(sample_rate);
         filter.SetRes(0.6);
         filter.SetDrive(0.002);
         filter.SetFreq(frequency);
         knob_amp = 1.0f;
-        follower_amp = 1.0f;
-        frontend_follower_amp = 1.0f;
         split_signal_band_index = floor(global_band_index / 2);
         is_odd = global_band_index % 2;
-        paired_band_index = (is_odd) ? (global_band_index - 1) : (global_band_index + 1);
-    }
-
-    // Get filtered signal from bank, respecting the knob amplitude attenuation but ignoring envelope follower
-    float PreProcess(float in)
-    {
-        filter.Process(in);
-        return filter.Band() * knob_amp;
     }
 
     // Get filtered signal from bank, applying both envelope follower and the attenuation from the knobs
     float Process(float in) {
-        float amp;
         amp = envelope.Process(env_gate_);
         filter.Process(in);
         return filter.Band() * amp; //follower_amp * knob_amp;
@@ -207,7 +191,11 @@ public:
         }
     }
 
-    void OnNoteOff() { env_gate_ = false; }
+    void OnNoteOff() {
+        env_gate_ = false;
+        velocity_ = 0;
+        amp = 0.f;
+    }
 
     inline bool  IsActive() const { return active_; }
     inline float GetNote() const { return note_; }
@@ -215,7 +203,6 @@ public:
     private:
         float      note_, velocity_;
         bool       active_;
-        bool       env_gate_;
 };
 
 Filter filters[16];
@@ -225,38 +212,6 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                           size_t                    size)
 {
     for(size_t i = 0; i < size; i++) {
-        for(int j = 0; j < 16; j++) {
-            int pairedBandIndex = filters[j].paired_band_index; // get paired band index
-
-            // get input signals, filter them accordingly
-            float unfilteredInput = (filters[j].isOdd()) ? in[ODD][i] : in[EVEN][i];
-            float filteredInput = filters[j].PreProcess(unfilteredInput);
-            float pairedUnfilteredInput = (filters[pairedBandIndex].isOdd()) ? in[ODD][i] : in[EVEN][i];
-            float pairedFilteredInput = filters[pairedBandIndex].PreProcess(pairedUnfilteredInput);
-
-            // Update the display envelope amp using the filtered input signal where it is active
-            if (filters[j].follower.isActive()) {
-                filters[j].frontend_follower_amp = float(filters[j].follower.Process(filteredInput, true));
-            }
-            else {
-                filters[j].frontend_follower_amp = 1.0f;
-            }
-
-            // if the paired band is transferring to the current band, use the paired follower amp...
-            if (filters[pairedBandIndex].follower.isActive()) {
-                if (transfer_odd_to_even && !filters[j].isOdd()) {
-                    filters[j].follower_amp = float(filters[pairedBandIndex].follower.Process(pairedFilteredInput, true));
-                }
-                else if (transfer_even_to_odd && filters[j].isOdd()) {
-                    filters[j].follower_amp = float(filters[pairedBandIndex].follower.Process(pairedFilteredInput, true));
-                }
-            }
-            // If its not being transferred to, but it is active, we update the current follower amp
-            else if (filters[j].follower.isActive()) {
-                filters[j].follower_amp = float(filters[j].follower.Process(filteredInput, true));
-            }
-        }
-
         float even_output = 0.f;
         float odd_output = 0.f;
 
@@ -313,7 +268,7 @@ void RenderBars() {
         // refactor to have a thin envelope bar inside the fat knob value?
         int amplitude = 0;
         amplitude += fmin(
-                floor((filters[i].knob_amp * filters[i].frontend_follower_amp) * 45),
+                floor(filters[i].amp * 45),
                 45
                 );
         hw.display.DrawRect(LEFT_BORDER_WIDTH + (i * (COLUMN_WIDTH + COLUMN_MARGIN)),
@@ -341,11 +296,24 @@ void UpdateLeds()
         if (bank == EVEN) { x = (i * 2); }
         hw.led_driver.SetLed(
                 knob_leds[i],
-                float((filters[x].knob_amp * filters[x].frontend_follower_amp))
+                float(filters[x].env_gate_) * 127.0f
                 );
-        hw.led_driver.SetLed(keyboard_leds[i + 8], float(filters[x].follower.isActive()));
+//        hw.led_driver.SetLed(keyboard_leds[i + 8], float(filters[x].follower.isActive()));
     }
     hw.led_driver.SwapBuffersAndTransmit();
+}
+
+char const * PrintInt(int input) {
+    std::string intermediate_string = std::to_string(input);
+    char const *output_string = intermediate_string.c_str();
+    return output_string;
+}
+
+char const * PrintFloat(float input) {
+    int int_input = static_cast<int>(input);
+    std::string intermediate_string = std::to_string(int_input);
+    char const *output_string = intermediate_string.c_str();
+    return output_string;
 }
 
 void UpdateOled()
@@ -356,10 +324,21 @@ void UpdateOled()
     hw.display.WriteString(BankToLabel(bank), SMALL_FONT, true);
     hw.display.SetCursor(LEFT_BORDER_WIDTH + 25, 0);
     hw.display.WriteString("|", SMALL_FONT, true);
-    hw.display.SetCursor(DISPLAY_WIDTH - 65, 0);
+    hw.display.WriteString(PrintInt(recent_midi_ch + 1), SMALL_FONT, true);
     hw.display.WriteString("|", SMALL_FONT, true);
-    hw.display.SetCursor(DISPLAY_WIDTH - 67, 0);
-    hw.display.WriteString(spectralTransferModeLabel(spectral_transfer_mode), SMALL_FONT, true);
+    hw.display.WriteString(PrintInt(recent_midi_note), SMALL_FONT, true);
+    hw.display.WriteString("|", SMALL_FONT, true);
+    hw.display.WriteString(PrintInt(recent_midi_velo), SMALL_FONT, true);
+    hw.display.WriteString("|", SMALL_FONT, true);
+//    hw.display.WriteString(
+//            PrintFloat(filters[GetIndexFromNote(recent_midi_note)].amp),
+//            SMALL_FONT,
+//            true
+//            );
+//    hw.display.SetCursor(DISPLAY_WIDTH - 65, 0);
+//    hw.display.WriteString("|", SMALL_FONT, true);
+//    hw.display.SetCursor(DISPLAY_WIDTH - 67, 0);
+//    hw.display.WriteString(spectralTransferModeLabel(spectral_transfer_mode), SMALL_FONT, true);
     hw.display.Update();
 }
 
@@ -371,9 +350,9 @@ void UpdateControls() {
     bank += hw.sw[0].RisingEdge() ? 1 : 0;
 //    bank = (bank % 2 + 2) % 2;
     bank = bank % 2;
-    // Using switches to shift through spectral transfer modulation
-    spectral_transfer_mode += hw.sw[1].RisingEdge() ? 1 : 0;
-    spectral_transfer_mode = (spectral_transfer_mode % 4 + 4) % 4;
+//    // Using switches to shift through spectral transfer modulation
+//    spectral_transfer_mode += hw.sw[1].RisingEdge() ? 1 : 0;
+//    spectral_transfer_mode = (spectral_transfer_mode % 4 + 4) % 4;
 
     float odd_vals[8];
     float even_vals[8];
@@ -426,48 +405,64 @@ void UpdateControls() {
     }
 }
 
-int GetIndexFromNote(int note) {
-    return note - BASE_NOTE;
-}
+
+
+//int GetIndexFromCC(int cc) {
+//    return cc - BASE_CC;
+//}
 
 // Typical Switch case for Message Type.
 void HandleMidiMessage(MidiEvent m)
 {
-    switch(m.type)
-    {
-        case NoteOn:
-        {
-            NoteOnEvent p = m.AsNoteOn();
-            Filter band = filters[GetIndexFromNote(p.note)];
-            // Note Off can come in as Note On w/ 0 Velocity
-            if(p.velocity < 1)
-            {
-                band.OnNoteOff();
+
+    if (m.channel==MIDI_CHANNEL) {
+        switch (m.type) {
+            case NoteOn: {
+                NoteOnEvent p = m.AsNoteOn();
+                recent_midi_ch = m.channel;
+                recent_midi_note = p.note;
+                recent_midi_velo = p.velocity;
+                int idx = GetIndexFromNote(p.note);
+                if (p.velocity < 1) {
+                    filters[idx].OnNoteOff();
+                } else {
+                    filters[idx].envelope.SetSustainLevel(static_cast<float>(p.velocity) / 127.0f);
+                    filters[idx].OnNoteOn(p.note, p.velocity);
+                }
             }
-            else
-            {
-                band.envelope.SetSustainLevel(static_cast < float > (p.velocity) / 127.0f);
-                band.OnNoteOn(p.note, p.velocity);
+            break;
+            case NoteOff: {
+                NoteOffEvent p = m.AsNoteOff();
+                recent_midi_ch = m.channel;
+                recent_midi_note = p.note;
+                recent_midi_velo = 0;
+                int idx = GetIndexFromNote(p.note);
+                filters[idx].OnNoteOff();
             }
-        }
             break;
-        case NoteOff:
-        {
-            NoteOnEvent p = m.AsNoteOn();
-            Filter band = filters[GetIndexFromNote(p.note)];
-            band.OnNoteOff();
+//            case ControlChange: {
+//                ControlChangeEvent p = m.AsControlChange();
+//                Filter cc_control = cc_controls[GetIndexFromCC(p.control_number)];
+//                band.
+//                switch(p.control_number)
+//                {
+//                    case 1:
+//                        // CC 1 for cutoff.
+//                        filt.SetFreq(mtof((float)p.value));
+//                        break;
+//                    case 2:
+//                        // CC 2 for res.
+//                        filt.SetRes(((float)p.value / 127.0f));
+//                        break;
+//                    default: break;
+//                }
+//                break;
+//            }
+            default: break;
         }
-            break;
-        default: break;
     }
 }
 
-//if (filters[i].follower.isActive()) {
-//amplitude += fmin(floor((filters[i].knob_amp * filters[i].follower_amp) * 45), 45);
-//}
-//else {
-//amplitude += fmin((filters[i].knob_amp * 45), 45);
-//}
 int main()
 {
     float sample_rate;
