@@ -5,7 +5,7 @@
 #include <string>
 #include <iomanip>
 
-#define MIDI_CHANNEL 0 // 0-indexed midi channel
+#define MIDI_CHANNEL 6 // 0-indexed midi channel
 #define BASE_NOTE 60
 #define BASE_CC 60
 #define LEFT_BORDER_WIDTH 1
